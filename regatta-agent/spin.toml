@@ -22,8 +22,3 @@ allowed_outbound_hosts = [
 [component.regatta-agent.build]
 command = "npm run build"
 watch = ["src/**/*.ts"]
-
-[variables]
-llm_api_key = { required = false, secret = true, description = "API key for the LLM provider" }
-llm_endpoint = { required = false, default = "https://api.anthropic.com/v1/messages", description = "LLM API endpoint (Anthropic-compatible)" }
-model = { required = false, default = "claude-sonnet-4-5-20250901", description = "Model name passed to the LLM API" }
