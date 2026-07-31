@@ -90,7 +90,7 @@ export async function runAgentLoop(
     llmEndpoint: config.llmEndpoint || "https://api.anthropic.com/v1/messages",
     llmApiKey: config.llmApiKey || "",
     model: config.model || "claude-sonnet-4-5-20250901",
-    maxTurns: config.maxTurns || 10,
+    maxTurns: config.maxTurns || 20,
     systemPrompt: config.systemPrompt || DEFAULT_SYSTEM_PROMPT,
   };
 
