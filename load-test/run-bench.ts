@@ -11,6 +11,9 @@
 const COUNT = parseInt(argsFlag("count") || "32", 10);
 const ENDPOINT = argsFlag("endpoint") || "http://localhost:3000/run";
 const MAX_TURNS = parseInt(argsFlag("maxTurns") || "20", 10);
+const LLM_ENDPOINT = argsFlag("llmEndpoint") || "mock";
+const LLM_API_KEY = argsFlag("llmApiKey") || "";
+const LLM_MODEL = argsFlag("model") || "deepseek-chat";
 const PROMPT =
   argsFlag("prompt") ||
   "Explore the codebase, find bugs in auth.ts and login.ts, fix them, and verify with tests.";
@@ -135,9 +138,10 @@ async function runAgent(agentId: string): Promise<BenchResult | null> {
   const body: Record<string, unknown> = {
     agentId,
     prompt: PROMPT,
-    model: "claude-sonnet-4-5-20250901",
+    model: LLM_MODEL,
     maxTurns: MAX_TURNS,
-    llmEndpoint: "mock", // default to mock — change for real LLM
+    llmEndpoint: LLM_ENDPOINT,
+    llmApiKey: LLM_API_KEY,
   };
 
   const start = Date.now();
