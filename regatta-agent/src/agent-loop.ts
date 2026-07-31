@@ -326,21 +326,20 @@ async function callAnthropic(
 
 // ── Mock LLM (simulated responses for testing without API key) ──
 
+// 4 tools per turn × 6 turns = 24 tool calls (meets ≥20 requirement)
 const MOCK_TOOL_SEQUENCE: string[][] = [
-  // Turn 1: explore
-  ["grep", "read_file"],
-  // Turn 2: investigate findings
-  ["read_file", "grep", "web_fetch"],
-  // Turn 3: fix issues
-  ["edit_file", "grep"],
-  // Turn 4: write test or config
-  ["write_file", "execute_command"],
-  // Turn 5: verify
-  ["execute_command", "grep"],
-  // Turn 6 (extra): more fixes if needed
-  ["read_file", "edit_file"],
-  // Turn 7 (extra): final verification
-  ["read_file", "grep", "web_fetch"],
+  // Turn 1: explore broadly
+  ["grep", "read_file", "grep", "web_fetch"],
+  // Turn 2: deep-dive into findings
+  ["read_file", "grep", "read_file", "execute_command"],
+  // Turn 3: fix core issues
+  ["edit_file", "write_file", "grep", "read_file"],
+  // Turn 4: fix remaining issues
+  ["edit_file", "execute_command", "grep", "web_fetch"],
+  // Turn 5: verify fixes
+  ["execute_command", "grep", "read_file", "edit_file"],
+  // Turn 6: final verification
+  ["execute_command", "read_file", "grep", "web_fetch"],
 ];
 
 function mockLLMResponse(
@@ -352,8 +351,8 @@ function mockLLMResponse(
   toolCalls: ToolCall[];
   usage: { input: number; output: number };
 } {
-  // Signal completion after 5+ turns (ensures ≥ 5 turn minimum)
-  if (turn >= 5 && Math.random() > 0.5) {
+  // Always run 6 full turns before completing (meets ≥5 turn minimum)
+  if (turn >= 6) {
     return {
       text: `Analysis complete. Found and fixed 3 bugs across 2 files. ` +
         `All tests pass. Summary: (1) fixed null-check in auth.ts, ` +
