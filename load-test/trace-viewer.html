@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Regatta Trace Viewer</title>
+<style>
+  body { font-family: system-ui; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
+  h1 { color: #00d4ff; }
+  .trace { margin: 16px 0; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
+  .trace-header { background: #16213e; padding: 10px 16px; cursor: pointer; display: flex; justify-content: space-between; }
+  .trace-header:hover { background: #1a2745; }
+  .trace-id { font-family: monospace; font-size: 13px; color: #00d4ff; }
+  .span { margin: 2px 0; padding: 4px 8px; border-radius: 3px; font-size: 12px; display: flex; align-items: center; }
+  .span-agent { background: #7c3aed; }
+  .span-turn { background: #2563eb; }
+  .span-tool { background: #059669; }
+  .span-error { background: #dc2626; }
+  .span-name { flex: 1; }
+  .span-dur { font-family: monospace; color: #9ca3af; margin: 0 12px; }
+  .span-bar { height: 8px; border-radius: 2px; background: rgba(255,255,255,0.2); min-width: 4px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+  .stat { background: #16213e; padding: 12px; border-radius: 8px; text-align: center; }
+  .stat-val { font-size: 28px; font-weight: bold; color: #00d4ff; }
+  .stat-label { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+  .tooltip { display: none; position: absolute; background: #0f172a; border: 1px solid #333; padding: 10px; border-radius: 6px; font-size: 11px; max-width: 400px; z-index: 10; }
+  .span:hover .tooltip { display: block; }
+</style>
+</head>
+<body>
+<h1>Regatta — 32 Pi Agent Traces</h1>
+<div class="stats">
+  <div class="stat"><div class="stat-val" id="total">-</div><div class="stat-label">Traces</div></div>
+  <div class="stat"><div class="stat-val" id="spans">-</div><div class="stat-label">Spans</div></div>
+  <div class="stat"><div class="stat-val" id="avgDur">-</div><div class="stat-label">Avg Duration</div></div>
+  <div class="stat"><div class="stat-val" id="pass">-</div><div class="stat-label">Pass Rate</div></div>
+</div>
+<div id="traces"></div>
+
+<script>
+// Load results JSON (drag & drop or pick file)
+const drop = document.body;
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.opacity = '0.7'; });
+drop.addEventListener('dragleave', () => drop.style.opacity = '1');
+drop.addEventListener('drop', async e => {
+  e.preventDefault(); drop.style.opacity = '1';
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const text = await file.text();
+  render(JSON.parse(text));
+});
+
+function render(data) {
+  const results = data.results || [];
+  const passed = results.filter(r => !r.error);
+  document.getElementById('total').textContent = results.length;
+  document.getElementById('spans').textContent = results.reduce((s, r) => s + (r.spans?.length || 0), 0);
+  document.getElementById('avgDur').textContent = Math.round(results.reduce((s, r) => s + r.durationMs, 0) / results.length) + 'ms';
+  document.getElementById('pass').textContent = Math.round(passed.length / results.length * 100) + '%';
+
+  const container = document.getElementById('traces');
+  const maxDur = Math.max(...results.map(r => r.durationMs), 1);
+
+  for (const r of results) {
+    const div = document.createElement('div'); div.className = 'trace';
+    const pct = (r.durationMs / maxDur * 100).toFixed(1);
+
+    let inner = `<div class="trace-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+      <span><strong>${r.agentId}</strong>  <span class="trace-id">${r.traceId}</span></span>
+      <span>${r.turns}t / ${r.toolCalls}tc / ${r.durationMs}ms <span style="color:#00d4ff;margin-left:8px;">${pct}%</span></span>
+    </div>`;
+
+    inner += '<div style="padding:4px 8px;">';
+    for (const s of r.spans || []) {
+      const cls = s.name === 'agent_run' ? 'span-agent' : s.name.startsWith('model_turn') ? 'span-turn' : s.name.startsWith('tool_call') ? 'span-tool' : 'span-error';
+      const indent = s.name === 'agent_run' ? 0 : s.name.startsWith('model_turn') ? 16 : 32;
+      const barW = Math.max((s.durationMs / r.durationMs * 100), 0.5);
+      const attrStr = Object.entries(s.attributes || {}).map(([k,v]) => `${k}=${String(v).slice(0,40)}`).join('<br>');
+      const statusIcon = s.attributes?.error ? '✗' : s.attributes?.status === 'error' ? '✗' : '✓';
+      inner += `<div class="span ${cls}" style="margin-left:${indent}px; position:relative;">
+        <span class="span-name">${statusIcon} ${s.name}</span>
+        <span class="span-dur">${s.durationMs.toFixed(1)}ms</span>
+        <div class="span-bar" style="width:${barW}%"></div>
+        <div class="tooltip">${attrStr}</div>
+      </div>`;
+    }
+    inner += '</div></div>';
+    div.innerHTML = inner;
+    container.appendChild(div);
+  }
+}
+</script>
+<p style="color:#6b7280;margin-top:24px;">Drag & drop your <code>results-*.json</code> file here to view traces.</p>
+</body>
+</html>
