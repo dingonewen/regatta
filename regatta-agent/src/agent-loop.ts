@@ -129,7 +129,9 @@ export async function runAgentLoop(
     try {
       llmResponse = isMock
         ? mockLLMResponse(turn, messages, resolved)
-        : await callAnthropic(messages, resolved);
+        : resolved.llmEndpoint.includes("anthropic")
+          ? await callAnthropic(messages, resolved)
+          : await callOpenAI(messages, resolved);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       telemetry.failSpan(turnSpanId, msg);
@@ -320,6 +322,120 @@ async function callAnthropic(
     usage: {
       input: data.usage?.input_tokens || 0,
       output: data.usage?.output_tokens || 0,
+    },
+  };
+}
+
+// ── Real LLM call (OpenAI-compatible API — DeepSeek, Groq, OpenAI) ──
+
+async function callOpenAI(
+  messages: Message[],
+  config: AgentConfig,
+): Promise<{
+  text: string | null;
+  toolCalls: ToolCall[];
+  usage: { input: number; output: number };
+}> {
+  // Convert to OpenAI Chat Completions format
+  const apiMessages: unknown[] = [
+    { role: "system", content: config.systemPrompt },
+  ];
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      apiMessages.push({ role: "user", content: msg.content });
+    } else if (msg.role === "assistant") {
+      const entry: Record<string, unknown> = { role: "assistant" };
+      if (msg.content && msg.content !== "") {
+        entry.content = msg.content;
+      } else {
+        entry.content = null;
+      }
+      if (msg.tool_calls && msg.tool_calls.length > 0) {
+        entry.tool_calls = msg.tool_calls.map((tc) => ({
+          id: tc.id,
+          type: "function",
+          function: {
+            name: tc.function.name,
+            arguments: tc.function.arguments,
+          },
+        }));
+      }
+      apiMessages.push(entry);
+    } else if (msg.role === "tool") {
+      apiMessages.push({
+        role: "tool",
+        tool_call_id: msg.tool_call_id,
+        content: msg.content,
+      });
+    }
+  }
+
+  const body = {
+    model: config.model,
+    max_tokens: 1024,
+    messages: apiMessages,
+    tools: TOOLS.map((t) => ({
+      type: "function",
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      },
+    })),
+  };
+
+  const response = await fetch(config.llmEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.llmApiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`LLM API ${response.status}: ${errText.slice(0, 500)}`);
+  }
+
+  // OpenAI format: { choices: [{ message: { content, tool_calls } }], usage }
+  const data = (await response.json()) as {
+    choices?: Array<{
+      message?: {
+        content?: string | null;
+        tool_calls?: Array<{
+          id: string;
+          type: string;
+          function: { name: string; arguments: string };
+        }>;
+      };
+    }>;
+    usage?: { prompt_tokens: number; completion_tokens: number };
+  };
+
+  const choice = data.choices?.[0]?.message;
+  const text = choice?.content || null;
+  const toolCalls: ToolCall[] = (choice?.tool_calls || []).map(
+    (tc: {
+      id: string;
+      type: string;
+      function: { name: string; arguments: string };
+    }) => ({
+      id: tc.id,
+      type: "function" as const,
+      function: {
+        name: tc.function.name,
+        arguments: tc.function.arguments,
+      },
+    }),
+  );
+
+  return {
+    text,
+    toolCalls,
+    usage: {
+      input: data.usage?.prompt_tokens || 0,
+      output: data.usage?.completion_tokens || 0,
     },
   };
 }
