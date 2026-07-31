@@ -69,13 +69,17 @@ router.post("/run", async (request: Request) => {
     return jsonResponse(200, {
       agentId,
       prompt: prompt.slice(0, 200),
-      ...result,
+      traceId: result.traceId,
+      turns: result.turns,
+      toolCalls: result.toolCalls,
+      finalResponse: result.finalResponse.slice(0, 1000),
+      durationMs: result.durationMs,
       spans: result.spans.map((s) => ({
         name: s.name,
         spanId: s.spanId,
         parentSpanId: s.parentSpanId,
-        durationMs: (s.endTime - s.startTime) / 1_000_000,
-        attributes: s.attributes,
+        durationMs: Math.round((s.endTime - s.startTime) / 1_000_000 * 100) / 100,
+        attributes: truncateAttrs(s.attributes),
       })),
     });
   } catch (err: unknown) {
@@ -113,8 +117,18 @@ addEventListener("fetch", (event: FetchEvent) => {
 // ── Helpers ──
 
 function jsonResponse(status: number, data: unknown): Response {
-  return new Response(JSON.stringify(data, null, 2), {
+  return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+function truncateAttrs(
+  attrs: Record<string, string | number>,
+): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(attrs)) {
+    out[k] = typeof v === "string" ? v.slice(0, 200) : v;
+  }
+  return out;
 }
