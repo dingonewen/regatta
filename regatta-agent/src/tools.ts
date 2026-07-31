@@ -114,7 +114,13 @@ export const TOOLS: ToolDef[] = [
  * but requires no filesystem or network access.
  */
 export function executeTool(tc: ToolCall): ToolResult {
-  const args = JSON.parse(tc.function.arguments || "{}");
+  let args: Record<string, unknown> = {};
+  try {
+    args = JSON.parse(tc.function.arguments || "{}");
+  } catch {
+    // LLM sometimes produces malformed JSON — use empty args as fallback
+    args = { _raw: tc.function.arguments };
+  }
   const content = simulateResult(tc.function.name, args);
 
   return {
