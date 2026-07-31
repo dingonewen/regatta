@@ -15,6 +15,15 @@
 import { TOOLS, ToolCall, ToolResult, executeTool } from "./tools";
 import { Telemetry } from "./telemetry";
 
+// ── Helpers ──
+
+/** Spin JS runtime lacks crypto — Math.random fallback for IDs */
+function randomHex(len: number): string {
+  let s = "";
+  for (let i = 0; i < len; i++) s += Math.floor(Math.random() * 16).toString(16);
+  return s;
+}
+
 // ── Types ──
 
 export interface AgentConfig {
@@ -295,7 +304,7 @@ async function callAnthropic(
       text = (text || "") + block.text;
     } else if (block.type === "tool_use") {
       toolCalls.push({
-        id: block.id || crypto.randomUUID(),
+        id: block.id || `mock-${randomHex(8)}`,
         type: "function",
         function: {
           name: block.name || "unknown",

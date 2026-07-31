@@ -18,16 +18,27 @@ export interface Span {
   attributes: Record<string, string | number>;
 }
 
+/**
+ * Generate a random hex string (Math.random-based).
+ * Spin's JS runtime does not expose crypto.getRandomValues, so we
+ * use Math.random. Sufficient for trace/span IDs in a benchmark POC.
+ */
+function randomHex(length: number): string {
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += Math.floor(Math.random() * 16).toString(16);
+  }
+  return result;
+}
+
 /** 32-char hex trace ID, matching W3C trace-id format */
 export function generateTraceId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return randomHex(32);
 }
 
 /** 16-char hex span ID */
 export function generateSpanId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return randomHex(16);
 }
 
 /** Convert high-res timestamp to nanoseconds (OTel convention) */
