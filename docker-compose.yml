@@ -1,0 +1,37 @@
+# Regatta observability stack
+# Spin → OTLP HTTP (:4318) → OTel Collector → Jaeger (:4317 gRPC)
+#
+# Usage:
+#   docker compose up -d
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 spin up
+#   # Run load test, then open http://localhost:16686
+
+services:
+  # ── OpenTelemetry Collector ──
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.127.0
+    container_name: regatta-otel
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4318:4318" # OTLP HTTP — apps send traces here
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Jaeger all-in-one (trace storage + UI) ──
+  jaeger:
+    image: jaegertracing/all-in-one:1.71
+    container_name: regatta-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686" # Jaeger UI → http://localhost:16686
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:16686"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped

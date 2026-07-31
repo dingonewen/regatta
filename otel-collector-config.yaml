@@ -1,0 +1,34 @@
+# OTel Collector configuration for Regatta
+# Receives OTLP HTTP from Spin, batches, exports to Jaeger via OTLP gRPC
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+
+exporters:
+  otlp/jaeger:
+    endpoint: "jaeger:4317"
+    tls:
+      insecure: true
+  logging:
+    loglevel: debug
+    sampling:
+      initial: 2
+      thereafter: 1000
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/jaeger, logging]
