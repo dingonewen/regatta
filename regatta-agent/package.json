@@ -1,0 +1,25 @@
+{
+  "name": "regatta-agent",
+  "version": "0.1.0",
+  "description": "Pi agent benchmark on Spin — 32 concurrent agent environments",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:debug": "node build.mjs --debug"
+  },
+  "keywords": [],
+  "author": "dingonewen",
+  "license": "MIT",
+  "devDependencies": {
+    "mkdirp": "^3.0.1",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.8.4",
+    "esbuild": "^0.25.8",
+    "@bytecodealliance/jco": "^1.17.6",
+    "@spinframework/build-tools": "^2.0.0"
+  },
+  "dependencies": {
+    "itty-router": "^5.0.18",
+    "@spinframework/wasi-http-proxy": "^2.0.0"
+  }
+}

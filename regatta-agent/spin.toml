@@ -1,0 +1,29 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["dingonewen <yd239@cornell.edu>"]
+description = "Pi agent benchmark on Spin — 32 concurrent agent environments with OpenTelemetry tracing"
+name = "regatta-agent"
+version = "0.1.0"
+
+[[trigger.http]]
+route = "/..."
+component = "regatta-agent"
+
+[component.regatta-agent]
+source = "dist/regatta-agent.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = [
+    "https://api.anthropic.com:*",
+    "https://api.openai.com:*",
+    "https://api.deepseek.com:*",
+    "https://api.groq.com:*",
+]
+[component.regatta-agent.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.ts"]
+
+[variables]
+llm_api_key = { required = false, secret = true, description = "API key for the LLM provider" }
+llm_endpoint = { required = false, default = "https://api.anthropic.com/v1/messages", description = "LLM API endpoint (Anthropic-compatible)" }
+model = { required = false, default = "claude-sonnet-4-5-20250901", description = "Model name passed to the LLM API" }
