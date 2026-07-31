@@ -53,8 +53,10 @@ export interface AgentResult {
 const DEFAULT_SYSTEM_PROMPT =
   "You are a coding agent. Your job is to explore a codebase, find bugs, " +
   "and apply fixes. Use the available tools to read files, search for patterns, " +
-  "edit code, run commands, and fetch web resources. After each tool result, " +
-  "decide whether you need more information or are ready to summarize your findings. " +
+  "edit code, run commands, and fetch web resources. " +
+  "IMPORTANT: Call MULTIPLE tools simultaneously in each turn when they are " +
+  "independent — e.g. read several files at once, or grep + read_file together. " +
+  "Aim for 3-4 tool calls per turn whenever possible. " +
   "When you have completed your analysis, respond with a text summary — do not " +
   "call tools in the same turn as your final answer.";
 
@@ -88,7 +90,7 @@ export async function runAgentLoop(
     llmEndpoint: config.llmEndpoint || "https://api.anthropic.com/v1/messages",
     llmApiKey: config.llmApiKey || "",
     model: config.model || "claude-sonnet-4-5-20250901",
-    maxTurns: config.maxTurns || 7,
+    maxTurns: config.maxTurns || 10,
     systemPrompt: config.systemPrompt || DEFAULT_SYSTEM_PROMPT,
   };
 

@@ -10,7 +10,7 @@
 
 const COUNT = parseInt(argsFlag("count") || "32", 10);
 const ENDPOINT = argsFlag("endpoint") || "http://localhost:3000/run";
-const MAX_TURNS = parseInt(argsFlag("maxTurns") || "7", 10);
+const MAX_TURNS = parseInt(argsFlag("maxTurns") || "10", 10);
 const PROMPT =
   argsFlag("prompt") ||
   "Explore the codebase, find bugs in auth.ts and login.ts, fix them, and verify with tests.";

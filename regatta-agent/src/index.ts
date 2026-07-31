@@ -58,7 +58,7 @@ router.post("/run", async (request: Request) => {
         ? body.model
         : "claude-sonnet-4-5-20250901",
     maxTurns:
-      typeof body.maxTurns === "number" ? body.maxTurns : 7,
+      typeof body.maxTurns === "number" ? body.maxTurns : 10,
   };
 
   const telemetry = new Telemetry();
