@@ -16,6 +16,7 @@ import * as fs from "node:fs/promises";
 
 const COUNT = parseInt(argsFlag("count") || "32", 10);
 const RUNS = parseInt(argsFlag("runs") || "1", 10);
+const STAGGER_MS = parseInt(argsFlag("stagger") || "0", 10);
 const ENDPOINT = argsFlag("endpoint") || "http://localhost:3000/run";
 const MAX_TURNS = parseInt(argsFlag("maxTurns") || "20", 10);
 const LLM_ENDPOINT = argsFlag("llmEndpoint") || "mock";
@@ -63,6 +64,7 @@ const ts = new Date().toISOString().replace(/[:.]/g, "-");
 console.log(`\n ⛵ Regatta Load Test`);
 console.log(`    agents:  ${COUNT}`);
 console.log(`    runs:    ${RUNS}`);
+console.log(`    stagger: ${STAGGER_MS}ms ${STAGGER_MS > 0 ? "(sequential, " + STAGGER_MS + "ms apart)" : "(concurrent)"}`);
 console.log(`    llm:     ${LLM_ENDPOINT}`);
 console.log(`    model:   ${LLM_MODEL}`);
 console.log(`    prompt:  "${PROMPT.slice(0, 60)}..."\n`);
@@ -74,15 +76,21 @@ const startTime = Date.now();
 const allRuns: RunResult[] = [];
 
 for (let round = 0; round < RUNS; round++) {
-  console.log(`─── Round ${round + 1}/${RUNS} ───`);
+  const mode = STAGGER_MS > 0 ? `stagger ${STAGGER_MS}ms` : "concurrent";
+  console.log(`─── Round ${round + 1}/${RUNS} (${mode}) ───`);
   const roundStart = Date.now();
 
-  const requests = Array.from({ length: COUNT }, (_, i) => {
+  // Fire requests — staggered or all at once
+  const promises: Promise<AgentResult | null>[] = [];
+  for (let i = 0; i < COUNT; i++) {
     const agentId = `r${round + 1}-${String(i + 1).padStart(2, "0")}`;
-    return runAgent(agentId);
-  });
+    if (STAGGER_MS > 0 && i > 0) {
+      await sleep(STAGGER_MS);
+    }
+    promises.push(runAgent(agentId));
+  }
 
-  const agents = (await Promise.all(requests)).filter(Boolean) as AgentResult[];
+  const agents = (await Promise.all(promises)).filter(Boolean) as AgentResult[];
   const roundElapsed = Date.now() - roundStart;
   allRuns.push({ round: round + 1, elapsedMs: roundElapsed, agents });
 
@@ -100,7 +108,7 @@ const metrics = stopMetricsCollector(collector, totalElapsed);
 const allAgents = allRuns.flatMap((r) => r.agents);
 
 const resultsPayload: FullResult = {
-  config: { count: COUNT, runs: RUNS, maxTurns: MAX_TURNS, llmEndpoint: LLM_ENDPOINT, model: LLM_MODEL },
+  config: { count: COUNT, runs: RUNS, staggerMs: STAGGER_MS, maxTurns: MAX_TURNS, llmEndpoint: LLM_ENDPOINT, model: LLM_MODEL },
   runs: allRuns,
 };
 await fs.writeFile(`results-${ts}.json`, JSON.stringify(resultsPayload, null, 2), "utf-8");
@@ -352,6 +360,10 @@ function max(arr: number[]): number {
 }
 function avg(arr: number[]): number {
   return arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function argsFlag(name: string): string | undefined {
