@@ -28,9 +28,9 @@ interface AgentResult {
 }
 
 interface ResultsFile {
-  config: { count: number; endpoint: string };
-  summary: { total: number; passed: number; elapsedSeconds: number };
-  results: AgentResult[];
+  config: Record<string, unknown>;
+  runs?: { agents: AgentResult[] }[];
+  results?: AgentResult[]; // legacy single-run format
 }
 
 const inputPath = process.argv[2];
@@ -43,7 +43,10 @@ if (!inputPath) {
   const raw = await fs.readFile(inputPath, "utf-8");
   const data: ResultsFile = JSON.parse(raw);
 
-  const resourceSpans = data.results
+  const agents = data.runs
+    ? data.runs.flatMap((r) => r.agents)
+    : (data.results || []);
+  const resourceSpans = agents
     .filter((r: AgentResult) => r.spans && r.spans.length > 0)
     .map((r: AgentResult) => ({
       resource: {
