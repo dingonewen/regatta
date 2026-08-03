@@ -3,7 +3,7 @@
  * Usage: npm run latest
  */
 
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 const files = readdirSync(".")
   .filter((f) => f.startsWith("results-"))
@@ -15,7 +15,8 @@ if (!latest) {
   process.exit(1);
 }
 
-const data = JSON.parse(require("node:fs").readFileSync(latest, "utf-8"));
+const raw = readFileSync(latest, "utf-8");
+const data = JSON.parse(raw);
 const agents = data.runs[0].agents as Array<{
   agentId: string;
   startedAt: number;
