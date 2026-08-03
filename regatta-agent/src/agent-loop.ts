@@ -24,6 +24,11 @@ function randomHex(len: number): string {
   return s;
 }
 
+function truncateContent(s: string, maxLen: number): string {
+  if (s.length <= maxLen) return s;
+  return s.slice(0, maxLen) + "...";
+}
+
 // ── Types ──
 
 export interface AgentConfig {
@@ -116,9 +121,11 @@ export async function runAgentLoop(
     turnCount = turn + 1;
 
     // ── Call LLM ──
+    const lastUserMsg = messages[messages.length - 1];
     const turnSpanId = telemetry.startSpan("model_turn", rootSpanId, {
       "turn.number": turnCount,
       "turn.message_count": messages.length,
+      "llm.request": truncateContent(String(lastUserMsg?.content || ""), 2000),
     });
 
     let llmResponse: {
@@ -149,12 +156,15 @@ export async function runAgentLoop(
     }
     const llmDurationMs = Date.now() - llmStart;
 
+    const lastMsg = messages[messages.length - 1];
     telemetry.endSpan(turnSpanId, {
       "llm.duration_ms": llmDurationMs,
       "llm.model": resolved.model,
       "llm.input_tokens": llmResponse.usage.input,
       "llm.output_tokens": llmResponse.usage.output,
       "turn.tool_calls_count": llmResponse.toolCalls.length,
+      "llm.response_text": truncateContent(llmResponse.text || "", 2000),
+      "llm.response_tool_names": llmResponse.toolCalls.map((tc) => tc.function.name).join(", "),
     });
 
     // ── Add assistant message to history ──
@@ -194,7 +204,8 @@ export async function runAgentLoop(
 
       telemetry.endSpan(toolSpanId, {
         "tool.name": tc.function.name,
-        "tool.result_length": result.content.length,
+        "tool.arguments": truncateContent(tc.function.arguments, 2000),
+        "tool.result": truncateContent(result.content, 2000),
       });
     }
 

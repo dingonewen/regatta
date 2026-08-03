@@ -139,7 +139,7 @@ function truncateAttrs(
 ): Record<string, string | number> {
   const out: Record<string, string | number> = {};
   for (const [k, v] of Object.entries(attrs)) {
-    out[k] = typeof v === "string" ? v.slice(0, 200) : v;
+    out[k] = typeof v === "string" ? v.slice(0, 5000) : v;
   }
   return out;
 }
