@@ -34,6 +34,7 @@ interface AgentResult {
   turns: number;
   toolCalls: number;
   durationMs: number;
+  spans?: unknown[];
   error?: string;
   passed: boolean;
 }
@@ -208,6 +209,7 @@ async function runAgent(agentId: string): Promise<AgentResult> {
       turns: (data.turns as number) || 0,
       toolCalls: (data.toolCalls as number) || 0,
       durationMs: (data.durationMs as number) || Date.now() - requestSentAt,
+      spans: data.spans as unknown[] | undefined,
       error: data.error as string,
       passed: false,
     };
@@ -224,6 +226,7 @@ async function runAgent(agentId: string): Promise<AgentResult> {
     turns,
     toolCalls,
     durationMs: (data.durationMs as number) || Date.now() - requestSentAt,
+    spans: data.spans as unknown[] | undefined,
     passed: turns >= 5 && toolCalls >= 20 && /^[0-9a-f]{32}$/.test(traceId),
   };
 }
