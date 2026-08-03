@@ -69,6 +69,10 @@ router.post("/run", async (request: Request) => {
   try {
     const result = await runAgentLoop(prompt, config, telemetry);
 
+    // Compute absolute wall-clock timestamps from the root span baseline
+    const rootSpan = result.spans.find((s) => s.name === "agent_run");
+    const t0 = rootSpan ? rootSpan.startTime : 0;
+
     return jsonResponse(200, {
       agentId,
       startedAt,
@@ -82,6 +86,8 @@ router.post("/run", async (request: Request) => {
         name: s.name,
         spanId: s.spanId,
         parentSpanId: s.parentSpanId,
+        startTimeUnixNano: String(startedAt * 1_000_000 + Math.round(s.startTime - t0)),
+        endTimeUnixNano: String(startedAt * 1_000_000 + Math.round(s.endTime - t0)),
         durationMs: Math.round((s.endTime - s.startTime) / 1_000_000 * 100) / 100,
         attributes: truncateAttrs(s.attributes),
       })),

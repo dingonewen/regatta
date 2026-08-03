@@ -15,6 +15,8 @@ interface SpanRecord {
   spanId: string;
   parentSpanId?: string;
   durationMs: number;
+  startTimeUnixNano?: string;
+  endTimeUnixNano?: string;
   attributes: Record<string, string | number>;
 }
 
@@ -69,14 +71,8 @@ if (!inputPath) {
             parentSpanId: s.parentSpanId || "",
             name: s.name,
             kind: s.name.startsWith("tool_call") ? 3 : 1, // CLIENT=3, INTERNAL=1
-            startTimeUnixNano: String(
-              Math.round(
-                (r.durationMs - s.durationMs) * 1_000_000,
-              ),
-            ),
-            endTimeUnixNano: String(
-              Math.round(r.durationMs * 1_000_000),
-            ),
+            startTimeUnixNano: s.startTimeUnixNano || "0",
+            endTimeUnixNano: s.endTimeUnixNano || "0",
             attributes: Object.entries(s.attributes).map(
               ([k, v]: [string, string | number]) => ({
                 key: k,
