@@ -119,29 +119,23 @@ console.log(`Metrics saved → metrics-${ts}.json`);
 
 // ── Compute statistics ──
 
-const coldStarts = allAgents
-  .filter((a) => a.startedAt != null && a.durationMs != null)
-  .map((a) => a.startedAt! - (allRuns.find((r) => r.agents.includes(a))?.agents[0]?.startedAt || a.startedAt!));
-
-// Cold start: calculate from the load-test side (response.startedAt - request.sentAt)
-// We don't have request.sentAt directly, so we use a different approach:
-// The agent's startedAt timestamp represents when the handler received the request.
-// Cold start ≈ (the agent's startedAt relative to the first agent in the same round)
-
 const e2eDurations = allAgents
   .filter((a) => a.passed)
   .map((a) => a.durationMs);
 
-// For cold start, we use the delta between agent.startedAt and the round's earliest startedAt
+// Cold start: each agent's handler-entry time minus its expected launch time.
+// With stagger, agent i was launched at base + i*stagger, so coldStart = actual - expected.
 const coldStartValues: number[] = [];
 for (const run of allRuns) {
-  const starts = run.agents
-    .filter((a) => a.startedAt != null)
-    .map((a) => a.startedAt!);
-  if (starts.length < 2) continue;
-  const base = Math.min(...starts);
-  for (const s of starts) {
-    coldStartValues.push(s - base);
+  const agents = run.agents.filter((a) => a.startedAt != null);
+  if (agents.length === 0) continue;
+  const base = Math.min(...agents.map((a) => a.startedAt!));
+  // Sort by startedAt so we match launch order
+  agents.sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0));
+  for (let i = 0; i < agents.length; i++) {
+    const expected = base + i * STAGGER_MS;
+    const actual = agents[i].startedAt!;
+    coldStartValues.push(actual - expected);
   }
 }
 
