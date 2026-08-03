@@ -39,6 +39,9 @@ router.post("/run", async (request: Request) => {
     });
   }
 
+  // Cold-start timestamp: first line after parsing the request body
+  const startedAt = Date.now();
+
   const prompt =
     typeof body.prompt === "string"
       ? body.prompt
@@ -68,6 +71,7 @@ router.post("/run", async (request: Request) => {
 
     return jsonResponse(200, {
       agentId,
+      startedAt,
       prompt: prompt.slice(0, 200),
       traceId: result.traceId,
       turns: result.turns,
@@ -86,6 +90,7 @@ router.post("/run", async (request: Request) => {
     const msg = err instanceof Error ? err.message : String(err);
     return jsonResponse(500, {
       agentId,
+      startedAt,
       error: msg,
       traceId: telemetry.traceId,
       spans: telemetry.getSpans().map((s) => ({
