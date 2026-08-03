@@ -117,6 +117,15 @@ console.log(`Results saved → results-${ts}.json`);
 await fs.writeFile(`metrics-${ts}.json`, JSON.stringify(metrics, null, 2), "utf-8");
 console.log(`Metrics saved → metrics-${ts}.json`);
 
+// Auto-export OTel trace file
+try {
+  execSync(`npx tsx export-otel.ts results-${ts}.json`, { timeout: 30000 });
+  console.log(`Traces saved → traces-${ts}.json`);
+} catch {
+  // OTel export is best-effort — don't fail the whole run
+  console.log("Traces export skipped (export-otel error)");
+}
+
 // ── Compute statistics ──
 
 const e2eDurations = allAgents
